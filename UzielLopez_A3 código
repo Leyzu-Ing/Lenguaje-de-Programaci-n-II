@@ -1,0 +1,92 @@
+#include <Windows.h>
+#include <sql.h>
+#include <sqlext.h>
+#include <iostream>
+#include <iomanip>
+
+using namespace std;
+
+int main()
+{
+    SQLHENV hEnv;
+    SQLHDBC hDbc;
+    SQLRETURN ret;
+
+    //Asignar un gestor de entorno. 
+    ret = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hEnv);
+    ret = SQLSetEnvAttr(hEnv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0);
+
+    //Asignar un gestor de conexion.
+    ret = SQLAllocHandle(SQL_HANDLE_DBC, hEnv, &hDbc);
+
+    //Conectarse a la base de datos.
+    ret = SQLConnect(hDbc, (SQLWCHAR*)L"sqlserver", SQL_NTS, (SQLWCHAR*)L"Username", SQL_NTS, (SQLWCHAR*)L"Password", SQL_NTS);
+
+    if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)
+    {
+        cout << "Conectado a la Base de Datos Exitosamente!" << endl << endl;
+        cout << "Se muestra la Tabla Empleados:" << endl << endl;
+        SQLHSTMT hStml;
+        ret = SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStml);
+        wcout << L"+--------+-------------------------+-----------+--------------+-----------------------------+-----------------------------+-------------+----------+" << endl;
+        wcout << L"|No. Emp |Nombre Completo          |Fecha Nac. | RFC          |Puesto                       |Descripcion de Puesto        |Centro       |Directivo |" << endl;
+        wcout << L"+--------+-------------------------+-----------+--------------+-----------------------------+-----------------------------+-------------+----------+" << endl;
+        ret = SQLExecDirect(hStml, (SQLWCHAR*)L"SELECT * FROM empleados", SQL_NTS);
+        if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO) {
+            int num_empleado;
+            SQLWCHAR nombre[30];
+            SQLWCHAR ApPat[30];
+            SQLWCHAR ApMat[30];
+            SQLWCHAR FechaNac[15];
+            SQLWCHAR RFC[20];
+            SQLWCHAR CtoTrab[20];
+            SQLWCHAR puesto[30];
+            SQLWCHAR DescPuest[30];
+            SQLWCHAR Direct[5];
+            while (SQLFetch(hStml) == SQL_SUCCESS) {
+                SQLGetData(hStml, 1, SQL_C_LONG, &num_empleado, 0, NULL);
+                SQLGetData(hStml, 2, SQL_C_WCHAR, nombre, sizeof(nombre), NULL);
+                SQLGetData(hStml, 3, SQL_C_WCHAR, ApPat, sizeof(ApPat), NULL);
+                SQLGetData(hStml, 4, SQL_C_WCHAR, ApMat, sizeof(ApMat), NULL);
+                SQLGetData(hStml, 5, SQL_C_WCHAR, FechaNac, sizeof(FechaNac), NULL);
+                SQLGetData(hStml, 6, SQL_C_WCHAR, RFC, sizeof(RFC), NULL);
+                SQLGetData(hStml, 7, SQL_C_WCHAR, puesto, sizeof(puesto), NULL);
+                SQLGetData(hStml, 8, SQL_C_WCHAR, DescPuest, sizeof(DescPuest), NULL);
+                SQLGetData(hStml, 9, SQL_C_WCHAR, CtoTrab, sizeof(CtoTrab), NULL);
+                SQLGetData(hStml, 10, SQL_C_WCHAR, Direct, sizeof(Direct), NULL);
+                //Concatenar nombre completo y directivo.
+                wstring NombComp = wstring(nombre) + L" " + wstring(ApPat) + L" " + wstring(ApMat);
+                wstring dir = wstring(Direct);
+                wstring resp;
+                if (dir == L"1") {
+                    resp = L"Si";
+                }
+                else {
+                    resp = L"No";
+                }
+                wcout << "|" << setw(8) << right << num_empleado
+                    << "|" << setw(25) << left << NombComp
+                    << "|" << setw(11) << left << FechaNac
+                    << "|" << setw(14) << left << RFC
+                    << "|" << setw(29) << left << puesto
+                    << "|" << setw(29) << left << DescPuest 
+                    << "|" << setw(13) << left << CtoTrab
+                    << "|" << setw(10) << left << resp
+                    << "|" << endl;
+            }
+            wcout << L"+--------+-------------------------+-----------+--------------+-----------------------------+-----------------------------+-------------+----------+" << endl;
+        }
+        //Liberar el manejador de conexion.
+        SQLFreeHandle(SQL_HANDLE_STMT, hStml);
+    }
+    else
+    {
+        cout << "Fallo la Conexion con la Base de Datos!" << endl;
+    }
+
+    //Desconectar y liberar gestor de entorno.
+    SQLDisconnect(hDbc);
+    SQLFreeHandle(SQL_HANDLE_DBC, hDbc);
+    SQLFreeHandle(SQL_HANDLE_DBC, hEnv);
+    return 0;
+}
